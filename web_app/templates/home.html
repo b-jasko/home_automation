@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<!-- Latest compiled and minified CSS -->
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+      integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+
+<!-- jQuery library -->
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+
+<!-- Latest compiled JavaScript -->
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+<script type=text/javascript>
+    $(function () {
+        $('button#my_button').bind('click', function () {
+            var windowShutter = $('#window_shutter').val();
+            $.getJSON('/send',
+                {windowShutter},
+                function (data) {
+                    //do nothing
+                });
+            return false;
+        });
+    });
+</script>
+
+<head>
+    <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Title</title>
+</head>
+<body>
+<div>
+    <div class="card m-5">
+        <h5 class="card-header bg-primary text-white text-center">Home automation</h5>
+        <div class="card-body">
+            <form id="my_form">
+                <div class="form-group">
+                    <label for="window_shutter">Window shutter</label>
+                    <select class="form-control" id="window_shutter">
+                        <option value="OPEN">Open</option>
+                        <option value="CLOSE">Close</option>
+                        <option value="HOLD">Hold</option>
+                    </select>
+                </div>
+                <div class="text-center">
+                    <button id="my_button" type="submit" class="btn btn-primary">Send</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+</body>
+</html>
