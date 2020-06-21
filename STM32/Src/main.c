@@ -23,7 +23,9 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "onewire.h"
+#include "ds18b20.h"
+#include "string.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -33,7 +35,9 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define MOTOR_OPEN_COMMAND		('a')
+#define MOTOR_CLOSE_COMMAND		('b')
+#define MOTOR_HOLD_COMMAND		('c')
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -42,11 +46,20 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+TIM_HandleTypeDef htim3;
+
 UART_HandleTypeDef huart2;
 UART_HandleTypeDef huart3;
 
 /* USER CODE BEGIN PV */
 volatile uint8_t Received;
+char motor_command;
+
+float temperature;
+char message[64];
+
+uint32_t sensor_time;
+uint32_t distance;
 
 /* USER CODE END PV */
 
@@ -55,7 +68,14 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_USART3_UART_Init(void);
+static void MX_TIM3_Init(void);
 /* USER CODE BEGIN PFP */
+void motor_open(void);
+void motor_close(void);
+void motor_hold(void);
+
+void delay (uint32_t us);
+uint32_t hcsr04_read (void);
 
 /* USER CODE END PFP */
 
@@ -95,8 +115,11 @@ int main(void)
   MX_GPIO_Init();
   MX_USART2_UART_Init();
   MX_USART3_UART_Init();
+  MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
+  HAL_TIM_Base_Start(&htim3);
   HAL_UART_Receive_IT(&huart3, &Received, 1);
+  DS18B20_Init(DS18B20_Resolution_12bits);
 
   /* USER CODE END 2 */
 
@@ -107,21 +130,36 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  if ('a' == Received)
-	  {
-		  HAL_GPIO_WritePin(MOTOR_A_GPIO_Port, MOTOR_A_Pin, GPIO_PIN_RESET);
-		  HAL_GPIO_WritePin(MOTOR_B_GPIO_Port, MOTOR_B_Pin, GPIO_PIN_SET);
-	  }
-	  else if ('b' == Received)
-	  {
-		  HAL_GPIO_WritePin(MOTOR_A_GPIO_Port, MOTOR_A_Pin, GPIO_PIN_SET);
-		  HAL_GPIO_WritePin(MOTOR_B_GPIO_Port, MOTOR_B_Pin, GPIO_PIN_RESET);
-	  }
-	  else if ('c' == Received)
-	  {
-		  HAL_GPIO_WritePin(MOTOR_A_GPIO_Port, MOTOR_A_Pin, GPIO_PIN_RESET);
-		  HAL_GPIO_WritePin(MOTOR_B_GPIO_Port, MOTOR_B_Pin, GPIO_PIN_RESET);
-	  }
+	  sensor_time = hcsr04_read();
+	  distance  = sensor_time * .034/2;
+
+	  DS18B20_ReadAll();
+      DS18B20_StartAll();
+
+      uint8_t ROM_tmp[1];
+      uint8_t i;
+      for(i = 0; i < DS18B20_Quantity(); i++)
+      {
+    	  if(DS18B20_GetTemperature(i, &temperature))
+    	  {
+    		  DS18B20_GetROM(i, ROM_tmp);
+    		  memset(message, 0, sizeof(message));
+    		  sprintf(message, "Distance: %u, Temp: %f\n\r", distance, temperature);
+    		  HAL_UART_Transmit(&huart2, (uint8_t*)message, sizeof(message), 100);
+			}
+		}
+      HAL_UART_Transmit(&huart2, (uint8_t*)"\n\r", sizeof("\n\r"), 100);
+      HAL_Delay(1000);
+
+      if(MOTOR_OPEN_COMMAND == motor_command && distance > 20)
+      {
+    	  motor_hold();
+      }
+
+      if(MOTOR_CLOSE_COMMAND == motor_command && distance < 5)
+      {
+    	  motor_hold();
+      }
   }
   /* USER CODE END 3 */
 }
@@ -160,6 +198,51 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+}
+
+/**
+  * @brief TIM3 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM3_Init(void)
+{
+
+  /* USER CODE BEGIN TIM3_Init 0 */
+
+  /* USER CODE END TIM3_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM3_Init 1 */
+
+  /* USER CODE END TIM3_Init 1 */
+  htim3.Instance = TIM3;
+  htim3.Init.Prescaler = 63;
+  htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim3.Init.Period = 65535;
+  htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim3, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM3_Init 2 */
+
+  /* USER CODE END TIM3_Init 2 */
+
 }
 
 /**
@@ -247,6 +330,9 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOC, US_TRIGGER_Pin|DS18B20_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, MOTOR_A_Pin|MOTOR_B_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : B1_Pin */
@@ -261,6 +347,19 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(LD2_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : US_TRIGGER_Pin DS18B20_Pin */
+  GPIO_InitStruct.Pin = US_TRIGGER_Pin|DS18B20_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : US_ECHO_Pin */
+  GPIO_InitStruct.Pin = US_ECHO_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(US_ECHO_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : MOTOR_A_Pin MOTOR_B_Pin */
   GPIO_InitStruct.Pin = MOTOR_A_Pin|MOTOR_B_Pin;
@@ -278,15 +377,68 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 
- uint8_t Data[50]; // Tablica przechowujaca wysylana wiadomosc.
- uint16_t size = 0; // Rozmiar wysylanej wiadomosci
+// uint8_t Data[50]; // Tablica przechowujaca wysylana wiadomosc.
+// uint16_t size = 0; // Rozmiar wysylanej wiadomosci
 
- size = sprintf(Data, "Odebrana wiadomosc: %c\n\r",Received);
+// size = sprintf(Data, "Odebrana wiadomosc: %c\n\r",Received);
+//
+// HAL_UART_Transmit_IT(&huart3, Data, size); // Rozpoczecie nadawania danych z wykorzystaniem przerwan
+ if (MOTOR_OPEN_COMMAND == Received && distance < 20)
+ {
+	 motor_open();
+	 motor_command = Received;
+ }
+ else if (MOTOR_CLOSE_COMMAND == Received && distance > 5)
+ {
+	 motor_close();
+	 motor_command = Received;
+ }
+ else if (MOTOR_HOLD_COMMAND == Received)
+ {
+	 motor_hold();
+	 motor_command = Received;
+ }
 
- HAL_UART_Transmit_IT(&huart3, Data, size); // Rozpoczecie nadawania danych z wykorzystaniem przerwan
  HAL_UART_Receive_IT(&huart3, &Received, 1); // Ponowne włączenie nasłuchiwania
 }
 
+void motor_open(void)
+{
+	  HAL_GPIO_WritePin(MOTOR_A_GPIO_Port, MOTOR_A_Pin, GPIO_PIN_RESET);
+	  HAL_GPIO_WritePin(MOTOR_B_GPIO_Port, MOTOR_B_Pin, GPIO_PIN_SET);
+}
+
+void motor_close(void)
+{
+	  HAL_GPIO_WritePin(MOTOR_A_GPIO_Port, MOTOR_A_Pin, GPIO_PIN_SET);
+	  HAL_GPIO_WritePin(MOTOR_B_GPIO_Port, MOTOR_B_Pin, GPIO_PIN_RESET);
+}
+
+void motor_hold(void)
+{
+	  HAL_GPIO_WritePin(MOTOR_A_GPIO_Port, MOTOR_A_Pin, GPIO_PIN_RESET);
+	  HAL_GPIO_WritePin(MOTOR_B_GPIO_Port, MOTOR_B_Pin, GPIO_PIN_RESET);
+}
+
+void delay (uint32_t us)
+{
+	__HAL_TIM_SET_COUNTER(&htim3, 0);
+	while ((__HAL_TIM_GET_COUNTER(&htim3))<us);
+}
+
+uint32_t hcsr04_read(void)
+{
+	HAL_GPIO_WritePin(US_TRIGGER_GPIO_Port, US_TRIGGER_Pin, GPIO_PIN_RESET);
+	delay(2);
+	HAL_GPIO_WritePin(US_TRIGGER_GPIO_Port, US_TRIGGER_Pin, GPIO_PIN_SET);
+	delay(10);
+	HAL_GPIO_WritePin(US_TRIGGER_GPIO_Port, US_TRIGGER_Pin, GPIO_PIN_RESET);
+
+	while (!(HAL_GPIO_ReadPin(US_ECHO_GPIO_Port, US_ECHO_Pin)));  	// wait for the ECHO pin to go high
+	__HAL_TIM_SET_COUNTER(&htim3, 0);
+	while (HAL_GPIO_ReadPin(US_ECHO_GPIO_Port, US_ECHO_Pin));		//measure high time
+	return __HAL_TIM_GET_COUNTER(&htim3);
+}
 /* USER CODE END 4 */
 
 /**

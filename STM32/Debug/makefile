@@ -38,7 +38,7 @@ all: home_automation.elf secondary-outputs
 
 # Tool invocations
 home_automation.elf: $(OBJS) $(USER_OBJS) C:\STM32\workspace_cubeIDE\home_automation\STM32F103RBTX_FLASH.ld
-	arm-none-eabi-gcc -o "home_automation.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m3 -T"C:\STM32\workspace_cubeIDE\home_automation\STM32F103RBTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="home_automation.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+	arm-none-eabi-gcc -o "home_automation.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m3 -T"C:\STM32\workspace_cubeIDE\home_automation\STM32F103RBTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="home_automation.map" -Wl,--gc-sections -static -u _printf_float --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 

@@ -67,6 +67,12 @@ void Error_Handler(void);
 #define USART_RX_GPIO_Port GPIOA
 #define LD2_Pin GPIO_PIN_5
 #define LD2_GPIO_Port GPIOA
+#define US_TRIGGER_Pin GPIO_PIN_6
+#define US_TRIGGER_GPIO_Port GPIOC
+#define US_ECHO_Pin GPIO_PIN_8
+#define US_ECHO_GPIO_Port GPIOC
+#define DS18B20_Pin GPIO_PIN_9
+#define DS18B20_GPIO_Port GPIOC
 #define TMS_Pin GPIO_PIN_13
 #define TMS_GPIO_Port GPIOA
 #define TCK_Pin GPIO_PIN_14
@@ -78,7 +84,9 @@ void Error_Handler(void);
 #define MOTOR_B_Pin GPIO_PIN_9
 #define MOTOR_B_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */
+#define	_DS18B20_TIMER					htim3
 
+extern TIM_HandleTypeDef htim3;
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus
