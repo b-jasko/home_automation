@@ -12,5 +12,3 @@ System features:
 - Temperature monitoring with usage of DS18B20 digital thermometer (1-Wire)
 
 - Controlling window shutter - it will be simulated by controlling small DC motor and monitoring status of distance sensor (e.g. HC-SR04)
-
-- (to be considered) sound or motion controlled lights - lights can be simulated with LEDs, for sound control a simple microphone sound sensor module can be used, e.g. KY-038, for motion e.g. HC-SR501
