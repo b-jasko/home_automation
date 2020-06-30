@@ -144,11 +144,13 @@ int main(void)
     	  {
     		  DS18B20_GetROM(i, ROM_tmp);
     		  memset(message, 0, sizeof(message));
-    		  sprintf(message, "Distance: %u, Temp: %f\n\r", distance, temperature);
-    		  HAL_UART_Transmit(&huart2, (uint8_t*)message, sizeof(message), 100);
+    		  sprintf(message, "%u,%f", distance, temperature);
+    		  HAL_UART_Transmit(&huart3, (uint8_t*)message, sizeof(message), 100); //uart to nodeMCU
+    		  HAL_UART_Transmit(&huart2, (uint8_t*)message, sizeof(message), 100); //uart to port monitor
 			}
 		}
-      HAL_UART_Transmit(&huart2, (uint8_t*)"\n\r", sizeof("\n\r"), 100);
+      HAL_UART_Transmit(&huart3, (uint8_t*)"\n", sizeof("\n"), 100);
+      HAL_UART_Transmit(&huart2, (uint8_t*)"\n", sizeof("\n"), 100);
       HAL_Delay(1000);
 
       if(MOTOR_OPEN_COMMAND == motor_command && distance > 20)

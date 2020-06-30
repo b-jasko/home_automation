@@ -1,5 +1,8 @@
 from flask import Flask, render_template, request
 import requests
+import json
+
+sensors_data = ""
 
 app = Flask(__name__)
 
@@ -27,6 +30,24 @@ def send():
 
     return "nothing"
 
+@app.route('/writedata', methods = ['GET', 'POST'])
+def writedata():
+    global sensors_data
+    sensors_data = request.get_data().decode('utf_8')
+    # sensors_data = request.data
+    return "nothing"
+
+@app.route('/readdata', methods = ['GET', 'POST'])
+def read():
+    global sensors_data
+    sensors_data_table = sensors_data.split(",")
+    print(sensors_data_table)
+    x = {
+        "distance":sensors_data_table[0][0:5],
+        "temperature":sensors_data_table[1][0:5]
+    }
+    sensors_data_json = json.dumps(x)
+    return sensors_data_json
 
 if __name__ == '__main__':
     app.run()

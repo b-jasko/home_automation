@@ -10,6 +10,7 @@
 <!-- Latest compiled JavaScript -->
 <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
 <script type=text/javascript>
+    var number = 123;
     $(function () {
         $('button#my_button').bind('click', function () {
             var windowShutter = $('#window_shutter').val();
@@ -21,6 +22,14 @@
             return false;
         });
     });
+
+    window.setInterval(function(){
+        $.getJSON('/readdata', function(data){
+                $('#distance').html(data["distance"]);
+                $('#temperature').html(data["temperature"]);
+        });
+    }, 1000);
+
 </script>
 
 <head>
@@ -32,6 +41,20 @@
     <div class="card m-5">
         <h5 class="card-header bg-primary text-white text-center">Home automation</h5>
         <div class="card-body">
+            <form id="read_data_form">
+                <div class="card">
+                  <div class="card-body">
+                    Distance:
+                      <span id="distance"></span>
+                  </div>
+                </div>
+                <div class="card">
+                  <div class="card-body">
+                    Temperature:
+                      <span id="temperature"></span>
+                  </div>
+                </div>
+            </form>
             <form id="my_form">
                 <div class="form-group">
                     <label for="window_shutter">Window shutter</label>
