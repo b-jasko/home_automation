@@ -12,3 +12,6 @@ System features:
 - Temperature monitoring with usage of DS18B20 digital thermometer (1-Wire)
 
 - Controlling window shutter - it will be simulated by controlling small DC motor and monitoring status of distance sensor (e.g. HC-SR04)
+
+Video presentation:
+https://drive.google.com/file/d/1yC2IrriCyoDI8Foaz_9RnJ5CDaKP3N4N/view?usp=sharing
